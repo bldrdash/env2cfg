@@ -1,6 +1,11 @@
 # env2cfg
 env2cfg substitutes variables in specified template with variables found in a dotenv file or environment.
 
+## Installation
+```bash
+go install github.com:bldrdash/env2cfg@latest
+```
+
 ## Usage
 ```bash
 Usage: env2cfg [OPTIONS] <env-file> <template-file> [<output-file>]
