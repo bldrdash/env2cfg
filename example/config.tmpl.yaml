@@ -1,0 +1,11 @@
+
+mqtt:
+  broker: "tcp://localhost"
+  port: 1883
+  username: "${MQTT_USERNAME}"
+  password: "${MQTT_PASSWORD}"
+
+apiserver:
+  url: "http://localhost:8080"
+  username: "${API_USERNAME}"
+  token: "${API_TOKEN}"

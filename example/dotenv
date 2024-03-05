@@ -1,0 +1,7 @@
+# Comments are allowed
+
+MQTT_USERNAME=mqttuser
+MQTT_PASSWORD=superSecret
+
+API_USERNAME=apiuser
+API_TOKEN=ABCDEF
