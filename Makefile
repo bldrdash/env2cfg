@@ -56,6 +56,6 @@ release: tidy lint
 	@go build -ldflags="${RELEASEFLAGS} -X main.Version=${VERSION}" -trimpath -o ${BINARY}
 
 example: build
-	./env2cfg -P example/dotenv example/config.tmpl.yaml config.yaml
+	./env2cfg -P example/config.tmpl.yaml example/dotenv config.yaml
 	@cat config.yaml
 	@rm config.yaml	

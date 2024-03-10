@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"os"
 	"testing"
 
@@ -11,6 +9,8 @@ import (
 )
 
 func TestFindVar(t *testing.T) {
+	Options = NewAppOptions("env2cfg")
+
 	// From command line
 	Options.EnvVars = map[string]string{
 		"TAG1": "value1",
@@ -78,52 +78,48 @@ func TestWriteLine(t *testing.T) {
 		t.Errorf("Expected line: %s, got: %s", expectedLine, actualLine)
 	}
 }
-func TestValidate(t *testing.T) {
-	// Test when Options.OutputFile is the same as Options.EnvFile
-	Options.OutputFile = Options.EnvFile
-	Options.TemplateFile = "template.txt"
-	err := Validate()
-	if err == nil {
-		t.Error("Expected an error, got nil")
+
+func TestInitFromCLI(t *testing.T) {
+	// Set up test environment
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"env2cfg", "example/config.tmpl.yaml", "envfile.env", "output.txt"}
+
+	// Call the function under test
+	fs, _ := InitFromCLI()
+
+	// Verify the options
+	if Options.Command != "env2cfg" {
+		t.Errorf("Expected Options.Command to be 'env2cfg', got '%s'", Options.Command)
+	}
+	if Options.TemplateFile != "example/config.tmpl.yaml" {
+		t.Errorf("Expected Options.TemplateFile to be 'example/config.tmpl.yaml', got '%s'", Options.TemplateFile)
+	}
+	if Options.EnvFile != "envfile.env" {
+		t.Errorf("Expected Options.EnvFile to be 'envfile.env', got '%s'", Options.EnvFile)
+	}
+	if Options.OutputFile != "output.txt" {
+		t.Errorf("Expected Options.OutputFile to be 'output.txt', got '%s'", Options.OutputFile)
 	}
 
-	// Test when Options.OutputFile is the same as Options.TemplateFile
-	Options.OutputFile = "output.txt"
-	Options.TemplateFile = Options.OutputFile
-	err = Validate()
-	if err == nil {
-		t.Error("Expected an error, got nil")
+	// Verify the flag set
+	if fs.Usage == nil {
+		t.Error("Expected flag set usage to be set")
+	}
+	if fs.SortFlags {
+		t.Error("Expected flag set SortFlags to be false")
 	}
 
-	// Test when Options.OutputPerms.Mode() returns an error
-	var buf bytes.Buffer
-	StandardError = io.Writer(&buf)
-	defer func() {
-		StandardError = os.Stderr
-	}()
+	// Verify the error handling
+	t.Run("Error parsing flags", func(t *testing.T) {
 
-	Options.OutputFile = "output.txt"
-	Options.TemplateFile = "template.txt"
-	Options.OutputPerms = FilePermissions("abc") // Invalid file mode
-	err = Validate()
-	if err != nil {
-		t.Error("Expected a nil, got error")
-	}
-	if FileMode != 0640 {
-		t.Errorf("Expected 0640, got %v", FileMode)
-	}
-	if buf.String() != "could not convert abc to octal: using 0640\n" {
-		t.Error("Expected a message, got empty string")
-	}
-	StandardError = os.Stderr
+		// Call the function under test with invalid flags
+		os.Args = []string{"env2cfg", "--invalid-flag"}
+		_, err := InitFromCLI()
 
-	// Test when Options.OutputPerms.Mode() succeeds
-	Options.OutputPerms = FilePermissions("0644") // Valid file mode
-	err = Validate()
-	if err != nil {
-		t.Errorf("Expected no error, got: %v", err)
-	}
-	if FileMode != 0644 {
-		t.Errorf("Expected 0644, got %v", FileMode)
-	}
+		expectedErrMsg := "unknown flag: --invalid-flag"
+		if err != nil && err.Error() != expectedErrMsg {
+			t.Errorf("Expected error message '%s', got '%s'", expectedErrMsg, err.Error())
+		}
+	})
 }

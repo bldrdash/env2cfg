@@ -27,6 +27,23 @@ func (fp FilePermissions) Octal() (int64, error) {
 	return oct, err
 }
 
+// func (fp *FilePermissions) Help() string {
+// 	return "A map of environment variables to set on the remote host"
+// }
+
+func (fp *FilePermissions) String() string {
+	return string(*fp)
+}
+
+func (fp *FilePermissions) Set(value string) error {
+	*fp = (FilePermissions)(value)
+	return nil
+}
+
+func (e *FilePermissions) Type() string {
+	return "string"
+}
+
 // Chmod changes the file's permissions to mode
 // This nessesary as OpenFile with os.O_WRONLY|os.O_CREATE|os.O_TRUNC
 // doesn't change filter permissions if the file exists. Due to OpenFile

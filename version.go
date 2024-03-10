@@ -2,17 +2,11 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/alecthomas/kong"
+	"os"
 )
 
-var version = "v0.0.2"
+var version = "v0.0.3"
 
-func (v versionFlag) Decode(_ *kong.DecodeContext) error { return nil }
-func (v versionFlag) IsBool() bool                       { return true }
-func (v versionFlag) BeforeApply(app *kong.Kong) error {
-	fmt.Fprintln(app.Stderr, "env2cfg")
-	fmt.Fprintf(app.Stderr, "Version: %s\nBuild Time: %s\nGit Hash: %s\n", version, BuildTime, Githash)
-	app.Exit(0)
-	return nil
+func ShowVersion() {
+	fmt.Fprintf(os.Stderr, "%s version %s\n", Options.Command, version)
 }

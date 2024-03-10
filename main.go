@@ -2,61 +2,92 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
+	"strings"
 
-	"github.com/alecthomas/kong"
+	"github.com/bldrdash/sflags/gen/gpflag"
 	"github.com/spf13/afero"
+	"github.com/spf13/pflag"
 	"github.com/valyala/fasttemplate"
 )
-
-type versionFlag string
 
 var (
 	BuildTime     string
 	Githash       string
 	EnvFileVars   map[string]string
 	Warnings      []string
-	FileMode      fs.FileMode
-	aFS                     = afero.NewOsFs()
-	StandardError io.Writer = os.Stderr
+	FileMode      fs.FileMode = 0640
+	aFS                       = afero.NewOsFs()
+	StandardError io.Writer   = os.Stderr
+	Options       *AppOptions
 )
-
-var Options struct {
-	DryRun       bool              `short:"D" help:"Don't write to output-file."`
-	EnvOverride  bool              `short:"E" help:"Favor envfile over environment."`
-	EnvVars      map[string]string `short:"e" help:"Set environment variables from command line."`
-	NoEnvPerms   bool              `short:"P" help:"Don't check env-file file permissions."`
-	OutputPerms  FilePermissions   `short:"p" help:"Set output-file permissions." default:"0640"`
-	Quiet        bool              `short:"q" help:"Don't display warnings."`
-	ShowVersion  versionFlag       `name:"version" short:"v" help:"Show version"`
-	DelimStart   string            `help:"Starting delimiter string." default:"${"`
-	DelimEnd     string            `help:"Ending delimiter string." default:"}"`
-	EnvFile      string            `arg:"" help:"File to read variables from or - to use only environment."`
-	TemplateFile string            `arg:"" help:"Template file to use."`
-	OutputFile   string            `arg:"" optional:"" help:"File to output completed template or stdout if omitted."`
-}
 
 func init() {
 	EnvFileVars = make(map[string]string)
 	Warnings = make([]string, 0)
+	Options = NewAppOptions("env2cfg")
+
+}
+
+// InitFromCLI initializes the application options from the command line arguments.
+func InitFromCLI() (*pflag.FlagSet, error) {
+
+	fs := pflag.NewFlagSet(Options.Command, pflag.ContinueOnError)
+	err := gpflag.ParseTo(Options, fs)
+	if err != nil {
+		panic(err)
+	}
+
+	fs.Usage = Usage(Options.Command, fs)
+	fs.SortFlags = false
+
+	err = fs.Parse(os.Args[1:])
+	if err != nil {
+		return fs, err
+	}
+
+	if Options.ShowVersion {
+		ShowVersion()
+		// os.Exit(0)
+	}
+
+	Options.TemplateFile = fs.Arg(0)
+	Options.EnvFile = fs.Arg(1)
+	Options.OutputFile = fs.Arg(2)
+	return fs, nil
 }
 
 func main() {
 
-	kong.Parse(&Options,
-		kong.Name("env2cfg [OPTIONS]"),
-		kong.Description("Substitutes variables in template with values found in environment and/or env file."),
-		kong.UsageOnError(),
-	)
+	Options = NewAppOptions("env2cfg")
+
+	if fs, err := InitFromCLI(); err != nil {
+		if err != pflag.ErrHelp {
+			fs.Usage()
+		}
+		fmt.Fprintf(os.Stderr, "\n%s\n", err.Error())
+		os.Exit(1)
+	}
 
 	if err := Validate(); err != nil {
 		Fatal(err.Error())
 	}
 
-	Run()
+	contents, err := os.ReadFile(Options.TemplateFile)
+	if err != nil {
+		Fatal("Error reading template file: %s\n", err.Error())
+	}
+
+	if Options.Generate {
+		GenerateEnvFile(contents)
+	} else {
+		ProcessTemplate(contents)
+	}
+
 	DisplayWarnings()
 
 	if len(Warnings) != 0 {
@@ -64,30 +95,14 @@ func main() {
 	}
 }
 
-// Validate performs basic validation and an assignment
-func Validate() error {
-	var err error
+// ProcessTemplate reads environment variables and writes to outFile
+// using template tplFile
+func ProcessTemplate(contents []byte) {
 
-	// Don't clobber our files
-	if Options.OutputFile == Options.EnvFile {
-		return fmt.Errorf("env-file and output-file must differ")
-	}
-	if Options.OutputFile == Options.TemplateFile {
-		return fmt.Errorf("template-file and output-file must differ")
-	}
-
-	FileMode, err = Options.OutputPerms.Mode()
-	if err != nil {
-		fmt.Fprintf(StandardError, "could not convert %s to octal: using 0640\n", Options.OutputPerms)
-		FileMode = 0640
-	}
-	return nil
-}
-
-func Run() {
+	output := make([]string, 0)
 
 	// Include variables from file (dotenv)
-	if Options.EnvFile != "-" {
+	if Options.EnvFile != "" {
 		EnvFileVars = LoadEnvFile(Options.EnvFile)
 		if !Options.NoEnvPerms {
 			if err := CheckFilePerms(Options.EnvFile, Options.OutputPerms); err != nil && !Options.Quiet {
@@ -96,36 +111,7 @@ func Run() {
 		}
 	}
 
-	// Open template
-	file, err := aFS.Open(Options.TemplateFile)
-	if err != nil {
-		Fatal("Error reading template file: %s\n", err.Error())
-	}
-	defer file.Close()
-
-	// Output file or stdout (or nil for dry-run)
-	var output afero.File
-	if len(Options.OutputFile) != 0 && !Options.DryRun {
-		output, err = aFS.OpenFile(Options.OutputFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, FileMode)
-		if err != nil {
-			Fatal("Error opening output file: %s\n", err.Error())
-		}
-		defer func() {
-			output.Close()
-			Chmod(Options.OutputFile, FileMode)
-		}()
-
-	} else if !Options.DryRun {
-		output = os.Stdout
-	}
-
-	ProcessTemplate(file, output)
-}
-
-// ProcessTemplate reads environment variables and writes to outFile
-// using template tplFile
-func ProcessTemplate(tplFile, outFile afero.File) {
-	scanner := bufio.NewScanner(tplFile)
+	scanner := bufio.NewScanner(bytes.NewReader(contents))
 	for scanner.Scan() {
 		line := scanner.Text()
 		t := fasttemplate.New(line, Options.DelimStart, Options.DelimEnd)
@@ -137,13 +123,51 @@ func ProcessTemplate(tplFile, outFile afero.File) {
 		})
 		if err != nil {
 			AddWarning(err.Error())
-			WriteLine(outFile, line)
+			output = append(output, line)
 		} else {
-			WriteLine(outFile, s)
+			output = append(output, s)
 		}
 	}
 	if scanner.Err() != nil {
 		fmt.Fprintf(StandardError, "error: %s\n", scanner.Err())
+	}
+	if Options.OutputFile != "" {
+		rendreredContents := strings.Join(output, "\n") + "\n"
+		os.WriteFile(Options.OutputFile, []byte(rendreredContents), FileMode)
+	} else {
+		fmt.Fprintf(os.Stdout, "%s\n", strings.Join(output, "\n"))
+	}
+}
+
+// GenerateEnvFile writes a list of variables from <template> to <dotenv> or stdout
+func GenerateEnvFile(contents []byte) {
+
+	dupCheck := make(map[string]interface{}, 0)
+	keys := make([]string, 0)
+
+	scanner := bufio.NewScanner(bytes.NewReader(contents))
+	for scanner.Scan() {
+		line := scanner.Text()
+		t := fasttemplate.New(line, Options.DelimStart, Options.DelimEnd)
+		_, err := t.ExecuteFuncStringWithErr(func(w io.Writer, tag string) (int, error) {
+			if _, found := dupCheck[tag]; !found {
+				dupCheck[tag] = nil
+				keys = append(keys, tag)
+			}
+			return 0, nil
+		})
+		if err != nil {
+			AddWarning(err.Error())
+		}
+	}
+	if scanner.Err() != nil {
+		fmt.Fprintf(StandardError, "error: %s\n", scanner.Err())
+	}
+
+	if Options.EnvFile != "" {
+		os.WriteFile(Options.EnvFile, []byte(strings.Join(keys, "=\n")), FileMode)
+	} else {
+		fmt.Fprintf(os.Stdout, "%s\n", strings.Join(keys, "=\n"))
 	}
 }
 
@@ -177,13 +201,6 @@ func DisplayWarnings() {
 		for _, msg := range Warnings {
 			fmt.Fprintln(StandardError, msg)
 		}
-	}
-}
-
-// WriteLine writes a single line with \n to file descriptor
-func WriteLine(file afero.File, line string) {
-	if file != nil {
-		fmt.Fprintln(file, line)
 	}
 }
 
