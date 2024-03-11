@@ -42,7 +42,7 @@ func InitFromCLI() (*pflag.FlagSet, error) {
 		panic(err)
 	}
 
-	fs.Usage = Usage(Options.Command, fs)
+	fs.Usage = Usage(Options.Command, false, fs)
 	fs.SortFlags = false
 
 	err = fs.Parse(os.Args[1:])
@@ -50,9 +50,14 @@ func InitFromCLI() (*pflag.FlagSet, error) {
 		return fs, err
 	}
 
+	if Options.DetailedHelp {
+		Usage(Options.Command, true, fs)
+		os.Exit(0)
+	}
+
 	if Options.ShowVersion {
 		ShowVersion()
-		// os.Exit(0)
+		os.Exit(0)
 	}
 
 	Options.TemplateFile = fs.Arg(0)
@@ -68,8 +73,8 @@ func main() {
 	if fs, err := InitFromCLI(); err != nil {
 		if err != pflag.ErrHelp {
 			fs.Usage()
+			fmt.Fprintf(os.Stderr, "\n%s\n", err.Error())
 		}
-		fmt.Fprintf(os.Stderr, "\n%s\n", err.Error())
 		os.Exit(1)
 	}
 

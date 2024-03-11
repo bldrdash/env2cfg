@@ -12,13 +12,14 @@ type ENV map[string]string
 
 type AppOptions struct {
 	DryRun       bool            `flag:"dry-run D" desc:"Don't write to output-file."`
-	Generate     bool            `flag:"gen G" desc:"Generate <dot-env> based on <template>."`
+	Generate     bool            `flag:"gen G" desc:"Generate <dotenv> based on <template>."`
 	EnvOverride  bool            `flag:"override E" desc:"Favor envfile over environment."`
-	EnvVars      ENV             `flag:"vars e" desc:"Set environment variables from command line."`
-	NoEnvPerms   bool            `flag:"noperms P" desc:"Don't check env-file file permissions."`
+	EnvVars      ENV             `flag:"vars e" desc:"Add variables from command line."`
+	NoEnvPerms   bool            `flag:"noperms P" desc:"Don't check <envfile> file permissions."`
 	OutputPerms  FilePermissions `flag:"perms p" desc:"Set output-file permissions." default:"0640"`
 	Quiet        bool            `flag:"quiet q" desc:"Don't display warnings."`
 	ShowVersion  bool            `flag:"version v" desc:"Show version."`
+	DetailedHelp bool            `flag:"detailed H" desc:"Show detailed help and example."`
 	DelimStart   string          `desc:"Starting delimiter string." default:"${"`
 	DelimEnd     string          `desc:"Ending delimiter string." default:"}"`
 	Command      string          `flag:"-"`
@@ -28,32 +29,44 @@ type AppOptions struct {
 }
 
 // Usage returns a function that can be used to print the usage of the program
-func Usage(command string, flags *pflag.FlagSet) func() {
+func Usage(command string, detailed bool, flags *pflag.FlagSet) func() {
 	return func() {
-		fmt.Printf(`%[1]s reads environment variables and produces a config file based on a template
+		fmt.Printf(`%[1]s reads environment variables and produces a config file based on a template`, command)
+
+		fmt.Printf(`
+
 
 Usage: 
   %[1]s [FLAGS] <template> [<dotenv>] [<output>]
 	%[1]s -G <template> [<dotenv>]
+	%[1]s -H
+`[1:], command)
+
+		if detailed {
+
+			fmt.Printf(`
 
 Details:
-  %[1]s will read environment variables from the system and/or a dotenv file and output
+  %[1]s will read environment variables from the system and/or the <dotenv> file and output
 	to <output>.  If <dotenv> is omitted, only the system environment will be used for variables.
 	<output> is optional and will default to stdout if not provided.
-
+	
   When envoked with the -G flag, %[1]s will generate the <dotenv> file based on variables found
 	in <template> If <dotenv> is omitted, the output will be written to stdout.
-
+	
 	<template> can be in any format and will be parsed for variables using --delim-start and
 	--delim-end.  The default delimiters are "${" and "}".
-
+	
 Example Template:
   mqtt:
-	  broker: ${MQTT_BROKER}
-		port : ${MQTT_PORT}
+	broker: ${MQTT_BROKER}
+	port : ${MQTT_PORT}
+	`[1:], command)
+		}
 
+		fmt.Printf(`
 Flags:
-%s`, command, flags.FlagUsages())
+%s`, flags.FlagUsages())
 	}
 }
 
