@@ -3,7 +3,7 @@ env2cfg substitutes variables in specified template with variables found in a do
 
 ## Installation
 ```bash
-go install github.com:bldrdash/env2cfg@latest
+go install github.com/bldrdash/env2cfg@latest
 ```
 
 ## Usage
