@@ -40,7 +40,7 @@ func (fp *FilePermissions) Set(value string) error {
 	return nil
 }
 
-func (e *FilePermissions) Type() string {
+func (fp *FilePermissions) Type() string {
 	return "string"
 }
 

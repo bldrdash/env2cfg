@@ -17,11 +17,15 @@ Usage:
   env2cfg -H
 
 Details:
-env2cfg will read environment variables from the system and/or the <dotenv> file and output to <output>.  If <dotenv> is omitted, nly the system environment will be used for variables. <output> is optional and will default to stdout if not provided.
+env2cfg will read environment variables from the system and/or the <dotenv> file and 
+output to <output>.  If <dotenv> is omitted, nly the system environment will be used 
+for variables. <output> is optional and will default to stdout if not provided.
 
-When envoked with the -G flag, env2cfg will generate the <dotenv> file based on variables found in <template> If <dotenv> is omitted, the output will be written to stdout.
+When envoked with the -G flag, env2cfg will generate the <dotenv> file based on 
+variables found in <template> If <dotenv> is omitted, the output will be written to stdout.
 
-<template> can be in any format and will be parsed for variables using --delim-start and --delim-end.  The default delimiters are "${" and "}".
+<template> can be in any format and will be parsed for variables using --delim-start 
+and --delim-end.  The default delimiters are "${" and "}".
 
 Example Template:
   mqtt:
