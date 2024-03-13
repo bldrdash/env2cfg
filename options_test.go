@@ -34,7 +34,7 @@ func TestValidate(t *testing.T) {
 
 	Options.OutputFile = "output.txt"
 	Options.TemplateFile = "template.txt"
-	Options.OutputPerms = FilePermissions("abc") // Invalid file mode
+	Options.SetPerms = FilePermissions("abc") // Invalid file mode
 	err = Validate()
 	if err != nil {
 		t.Error("Expected a nil, got error")
@@ -45,7 +45,7 @@ func TestValidate(t *testing.T) {
 	StandardError = os.Stderr
 
 	// Test when Options.OutputPerms.Mode() succeeds
-	Options.OutputPerms = FilePermissions("0644") // Valid file mode
+	Options.SetPerms = FilePermissions("0644") // Valid file mode
 	err = Validate()
 	if err != nil {
 		t.Errorf("Expected no error, got: %v", err)

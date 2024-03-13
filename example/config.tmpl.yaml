@@ -1,7 +1,6 @@
 
 mqtt:
-  broker: "tcp://localhost"
-  port: 1883
+  broker: "tcp://${MQTT_BROKER}:$MQTT_PORT"
   username: "${MQTT_USERNAME}"
   password: "${MQTT_PASSWORD}"
 

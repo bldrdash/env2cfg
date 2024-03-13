@@ -15,8 +15,8 @@ type AppOptions struct {
 	Generate     bool            `flag:"gen G" desc:"Generate <dotenv> based on <template>."`
 	EnvOverride  bool            `flag:"override E" desc:"Favor envfile over environment."`
 	EnvVars      ENV             `flag:"vars e" desc:"Add variables from command line."`
-	NoEnvPerms   bool            `flag:"noperms P" desc:"Don't check <envfile> file permissions."`
-	OutputPerms  FilePermissions `flag:"perms p" desc:"Set output-file permissions." default:"0640"`
+	SetPerms     FilePermissions `flag:"perms p" desc:"Set <output> permissions." default:"0640"`
+	IgnorePerm   bool            `flag:"ignore-perm I" desc:"Don't check <envfile> file permissions."`
 	Quiet        bool            `flag:"quiet q" desc:"Don't display warnings."`
 	ShowVersion  bool            `flag:"version v" desc:"Show version."`
 	DetailedHelp bool            `flag:"detailed H" desc:"Show detailed help and example."`
@@ -59,8 +59,9 @@ Details:
 	
 Example Template:
   mqtt:
-	broker: ${MQTT_BROKER}
-	port : ${MQTT_PORT}
+	broker: tcp://${MQTT_BROKER}:${MQTT_PORT}
+	username: ${MQTT_USER}
+	password: ${MQTT_PASS}
 	`[1:], command)
 		}
 
@@ -94,11 +95,11 @@ func (e *ENV) Type() string {
 // NewAppOptions returns a new AppOptions struct with default values
 func NewAppOptions(command string) *AppOptions {
 	return &AppOptions{
-		Command:     command,
-		EnvVars:     make(ENV),
-		DelimStart:  "${",
-		DelimEnd:    "}",
-		OutputPerms: "0640",
+		Command:    command,
+		EnvVars:    make(ENV),
+		DelimStart: "${",
+		DelimEnd:   "}",
+		SetPerms:   "0640",
 	}
 }
 
@@ -126,9 +127,9 @@ func Validate() error {
 		}
 	}
 
-	FileMode, err = Options.OutputPerms.Mode()
+	FileMode, err = Options.SetPerms.Mode()
 	if err != nil {
-		fmt.Fprintf(StandardError, "could not convert %s to octal: using %s\n", Options.OutputPerms, FileMode.String())
+		fmt.Fprintf(StandardError, "could not convert %s to octal: using %s\n", Options.SetPerms, FileMode.String())
 	}
 
 	return nil

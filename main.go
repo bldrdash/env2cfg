@@ -51,7 +51,7 @@ func InitFromCLI() (*pflag.FlagSet, error) {
 	}
 
 	if Options.DetailedHelp {
-		Usage(Options.Command, true, fs)
+		(Usage(Options.Command, true, fs))()
 		os.Exit(0)
 	}
 
@@ -109,8 +109,8 @@ func ProcessTemplate(contents []byte) {
 	// Include variables from file (dotenv)
 	if Options.EnvFile != "" {
 		EnvFileVars = LoadEnvFile(Options.EnvFile)
-		if !Options.NoEnvPerms {
-			if err := CheckFilePerms(Options.EnvFile, Options.OutputPerms); err != nil && !Options.Quiet {
+		if !Options.IgnorePerm {
+			if err := CheckFilePerms(Options.EnvFile, Options.SetPerms); err != nil && !Options.Quiet {
 				Fatal(err.Error())
 			}
 		}

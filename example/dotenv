@@ -1,5 +1,7 @@
 # Comments are allowed
 
+MQTT_BROKER=localhost
+MQTT_PORT=8333
 MQTT_USERNAME=mqttuser
 MQTT_PASSWORD=superSecret
 
