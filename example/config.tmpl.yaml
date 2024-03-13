@@ -1,6 +1,6 @@
 
 mqtt:
-  broker: "tcp://${MQTT_BROKER}:$MQTT_PORT"
+  broker: "tcp://${MQTT_BROKER}:${MQTT_PORT}"
   username: "${MQTT_USERNAME}"
   password: "${MQTT_PASSWORD}"
 
